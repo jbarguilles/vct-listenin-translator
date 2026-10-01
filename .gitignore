@@ -1,0 +1,12 @@
+node_modules/
+.output/
+.wxt/
+dist/
+.env
+.env.*
+# Broadcast audio belongs to Riot; never commit it
+eval/clips/
+*.wav
+*.mp3
+*.m4a
+*.webm
