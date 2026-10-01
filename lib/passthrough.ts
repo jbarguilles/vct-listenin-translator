@@ -8,8 +8,12 @@ export function startPassthrough(
 ): () => Promise<void> {
   const ctx = makeContext();
   ctx.createMediaStreamSource(stream).connect(ctx.destination);
-  return async () => {
-    for (const track of stream.getTracks()) track.stop();
-    await ctx.close();
-  };
+  // Autoplay policy can start the context suspended, which would be silent.
+  if (ctx.state === 'suspended') void ctx.resume();
+  let stopping: Promise<void> | undefined;
+  return () =>
+    (stopping ??= (async () => {
+      for (const track of stream.getTracks()) track.stop();
+      await ctx.close();
+    })());
 }

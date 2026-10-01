@@ -6,7 +6,9 @@ function fakes() {
   const source = { connect: vi.fn() };
   const ctx = {
     destination,
+    state: 'running' as AudioContextState,
     createMediaStreamSource: vi.fn(() => source),
+    resume: vi.fn(async () => {}),
     close: vi.fn(async () => {}),
   };
   const track = { stop: vi.fn() };
@@ -28,5 +30,27 @@ describe('startPassthrough', () => {
     await stop();
     expect(track.stop).toHaveBeenCalled();
     expect(ctx.close).toHaveBeenCalled();
+  });
+
+  it('resumes a suspended context', () => {
+    const { ctx, stream } = fakes();
+    ctx.state = 'suspended';
+    startPassthrough(stream, () => ctx as unknown as AudioContext);
+    expect(ctx.resume).toHaveBeenCalled();
+  });
+
+  it('does not resume a running context', () => {
+    const { ctx, stream } = fakes();
+    startPassthrough(stream, () => ctx as unknown as AudioContext);
+    expect(ctx.resume).not.toHaveBeenCalled();
+  });
+
+  it('stop() is idempotent', async () => {
+    const { ctx, track, stream } = fakes();
+    const stop = startPassthrough(stream, () => ctx as unknown as AudioContext);
+    await stop();
+    await stop();
+    expect(track.stop).toHaveBeenCalledTimes(1);
+    expect(ctx.close).toHaveBeenCalledTimes(1);
   });
 });
