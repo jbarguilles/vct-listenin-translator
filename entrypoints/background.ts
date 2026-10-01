@@ -46,8 +46,8 @@ export default defineBackground(() => {
   });
 
   async function arm(tabId: number): Promise<Reply> {
-    if (!keysComplete(await loadKeys())) return { ok: false, error: 'Save both API keys first.' };
     try {
+      if (!keysComplete(await loadKeys())) return { ok: false, error: 'Save both API keys first.' };
       await controller.arm(tabId);
       return { ok: true };
     } catch (err) {
@@ -68,7 +68,8 @@ export default defineBackground(() => {
         const tabId = msg.tabId ?? sender.tab?.id;
         void controller
           .armedTabId()
-          .then((armedId) => sendResponse({ armed: tabId !== undefined && armedId === tabId } satisfies ArmingReply));
+          .then((armedId) => sendResponse({ armed: tabId !== undefined && armedId === tabId } satisfies ArmingReply))
+          .catch(() => sendResponse({ armed: false } satisfies ArmingReply));
         return true;
       }
       case 'capture-ended':
