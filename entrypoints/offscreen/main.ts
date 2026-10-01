@@ -13,13 +13,16 @@ async function start(streamId: string): Promise<void> {
     video: false,
   } as MediaStreamConstraints);
 
+  const stopThis = startPassthrough(stream);
+  stopCapture = stopThis;
+
   // Fires if Chrome ends the capture (e.g. tab crashed), not on our own stop().
   stream.getAudioTracks()[0]?.addEventListener('ended', () => {
+    if (stopCapture !== stopThis) return; // superseded or already stopped
     stopCapture = null;
-    void browser.runtime.sendMessage({ type: 'capture-ended' } satisfies BackgroundMsg);
+    void stopThis();
+    browser.runtime.sendMessage({ type: 'capture-ended' } satisfies BackgroundMsg).catch(() => {});
   });
-
-  stopCapture = startPassthrough(stream);
 }
 
 async function stop(): Promise<void> {
