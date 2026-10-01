@@ -16,7 +16,7 @@ function setup(overrides: Partial<ArmingPorts> = {}) {
     notifyTab: vi.fn(),
     ...overrides,
   };
-  return { controller: new ArmingController(store, ports), ports };
+  return { controller: new ArmingController(store, ports), ports, store };
 }
 
 describe('ArmingController', () => {
@@ -82,5 +82,51 @@ describe('ArmingController', () => {
     await controller.handleTabClosed(7);
     expect(ports.stopCapture).toHaveBeenCalledTimes(1);
     expect(await controller.armedTabId()).toBeNull();
+  });
+
+  it('serializes overlapping arm calls', async () => {
+    const { controller, ports } = setup();
+    await Promise.all([controller.arm(7), controller.arm(7)]);
+    expect(ports.startCapture).toHaveBeenCalledTimes(1);
+    expect(await controller.armedTabId()).toBe(7);
+  });
+
+  it('serializes a tab close that arrives while arming', async () => {
+    const { controller, ports } = setup();
+    await Promise.all([controller.arm(7), controller.handleTabClosed(7)]);
+    expect(ports.stopCapture).toHaveBeenCalledTimes(1);
+    expect(await controller.armedTabId()).toBeNull();
+  });
+
+  it('stays unarmed when the stream id cannot be obtained', async () => {
+    const { controller, ports } = setup({
+      getStreamId: vi.fn(async () => {
+        throw new Error('Not invoked');
+      }),
+    });
+    await expect(controller.arm(7)).rejects.toThrow('Not invoked');
+    expect(ports.startCapture).not.toHaveBeenCalled();
+    expect(await controller.armedTabId()).toBeNull();
+  });
+
+  it('still notifies the tab when stopping capture fails', async () => {
+    const { controller, ports } = setup({
+      stopCapture: vi.fn(async () => {
+        throw new Error('gone');
+      }),
+    });
+    await controller.arm(7);
+    await expect(controller.disarm()).rejects.toThrow('gone');
+    expect(ports.notifyTab).toHaveBeenLastCalledWith(7, false);
+    expect(await controller.armedTabId()).toBeNull();
+  });
+
+  it('a new controller on the same store can disarm (service worker restart)', async () => {
+    const { controller: controller1, ports, store } = setup();
+    await controller1.arm(7);
+    const controller2 = new ArmingController(store, ports);
+    await controller2.disarm();
+    expect(ports.stopCapture).toHaveBeenCalledTimes(1);
+    expect(await controller2.armedTabId()).toBeNull();
   });
 });

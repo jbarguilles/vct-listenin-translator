@@ -14,6 +14,8 @@ export interface ArmingPorts {
 
 /** Owns the Armed state: at most one tab's Broadcast mix is captured. */
 export class ArmingController {
+  private queue: Promise<unknown> = Promise.resolve();
+
   constructor(
     private readonly store: ArmingStore,
     private readonly ports: ArmingPorts,
@@ -23,10 +25,31 @@ export class ArmingController {
     return this.store.get();
   }
 
-  async arm(tabId: number): Promise<void> {
+  /** Runs operations one at a time so the store and the real capture can't diverge. */
+  private serialize<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(fn, fn);
+    this.queue = run.catch(() => {});
+    return run;
+  }
+
+  arm(tabId: number): Promise<void> {
+    return this.serialize(() => this.armInner(tabId));
+  }
+
+  disarm(): Promise<void> {
+    return this.serialize(() => this.disarmInner());
+  }
+
+  handleTabClosed(tabId: number): Promise<void> {
+    return this.serialize(async () => {
+      if ((await this.store.get()) === tabId) await this.disarmInner();
+    });
+  }
+
+  private async armInner(tabId: number): Promise<void> {
     const current = await this.store.get();
     if (current === tabId) return;
-    if (current !== null) await this.disarm();
+    if (current !== null) await this.disarmInner();
 
     try {
       const streamId = await this.ports.getStreamId(tabId);
@@ -39,15 +62,14 @@ export class ArmingController {
     this.ports.notifyTab(tabId, true);
   }
 
-  async disarm(): Promise<void> {
+  private async disarmInner(): Promise<void> {
     const current = await this.store.get();
     if (current === null) return;
     await this.store.set(null);
-    await this.ports.stopCapture();
-    this.ports.notifyTab(current, false);
-  }
-
-  async handleTabClosed(tabId: number): Promise<void> {
-    if ((await this.store.get()) === tabId) await this.disarm();
+    try {
+      await this.ports.stopCapture();
+    } finally {
+      this.ports.notifyTab(current, false);
+    }
   }
 }
