@@ -4,7 +4,7 @@ import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import { renderChip } from '@/lib/chip';
 import type { ArmingReply, BackgroundMsg, ContentMsg } from '@/lib/messages';
-import { findPlayer } from '@/lib/twitch';
+import { playerSelector } from '@/lib/twitch';
 
 export default defineContentScript({
   matches: ['*://*.twitch.tv/*'],
@@ -12,12 +12,14 @@ export default defineContentScript({
 
   async main(ctx) {
     let armed = false;
-    const disarm = () => void browser.runtime.sendMessage({ type: 'disarm' } satisfies BackgroundMsg);
+    const disarm = () => {
+      browser.runtime.sendMessage({ type: 'disarm' } satisfies BackgroundMsg).catch(() => {});
+    };
 
     const ui = await createShadowRootUi<HTMLElement>(ctx, {
       name: 'listenin-armed-chip',
       position: 'inline',
-      anchor: () => findPlayer(document),
+      anchor: () => playerSelector(document),
       append: 'last',
       onMount(container) {
         renderChip(container, armed, disarm);
@@ -32,11 +34,17 @@ export default defineContentScript({
       if (ui.mounted) renderChip(ui.mounted, armed, disarm);
     };
 
+    // A push from the background is newer than our initial query; don't let a late reply overwrite it.
+    let sawPush = false;
     browser.runtime.onMessage.addListener((msg: ContentMsg) => {
-      if (msg.type === 'arming-changed') setArmed(msg.armed);
+      if (msg.type !== 'arming-changed') return;
+      sawPush = true;
+      setArmed(msg.armed);
     });
 
-    const reply = (await browser.runtime.sendMessage({ type: 'get-arming' } satisfies BackgroundMsg)) as ArmingReply;
-    setArmed(reply.armed);
+    const reply = (await browser.runtime
+      .sendMessage({ type: 'get-arming' } satisfies BackgroundMsg)
+      .catch(() => undefined)) as ArmingReply | undefined;
+    if (!sawPush && reply) setArmed(reply.armed);
   },
 });

@@ -34,4 +34,16 @@ describe('renderChip', () => {
     renderChip(container, false, () => {});
     expect(container.childElementCount).toBe(0);
   });
+
+  it('does not let clicks bubble to ancestors', () => {
+    document.body.append(container);
+    const onDisarm = vi.fn();
+    const onAncestor = vi.fn();
+    container.addEventListener('click', onAncestor);
+    renderChip(container, true, onDisarm);
+    container.querySelector<HTMLButtonElement>('button.chip')!.click();
+    expect(onDisarm).toHaveBeenCalledTimes(1);
+    expect(onAncestor).not.toHaveBeenCalled();
+    container.remove();
+  });
 });

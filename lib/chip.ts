@@ -12,7 +12,10 @@ export function renderChip(container: HTMLElement, armed: boolean, onDisarm: () 
   chip.className = 'chip';
   chip.title = 'Click to disarm';
   chip.append(dot, ' Armed · listening');
-  chip.addEventListener('click', onDisarm);
+  chip.addEventListener('click', (event) => {
+    event.stopPropagation();
+    onDisarm();
+  });
 
   container.append(chip);
 }

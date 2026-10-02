@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { findPlayer, isTwitchUrl } from './twitch';
+import { isTwitchUrl, playerSelector } from './twitch';
 
 describe('isTwitchUrl', () => {
   it('accepts twitch.tv and its subdomains', () => {
@@ -17,23 +17,23 @@ describe('isTwitchUrl', () => {
   });
 });
 
-describe('findPlayer', () => {
+describe('playerSelector', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
   });
 
-  it('prefers the data-a-target player', () => {
+  it('prefers the data-a-target player when both exist', () => {
     document.body.innerHTML =
-      '<div class="video-player__container"><div data-a-target="video-player" id="p"></div></div>';
-    expect(findPlayer(document)?.id).toBe('p');
+      '<div class="video-player__container"><div data-a-target="video-player"></div></div>';
+    expect(playerSelector(document)).toBe('[data-a-target="video-player"]');
   });
 
-  it('falls back to the player container class', () => {
-    document.body.innerHTML = '<div class="video-player__container" id="c"></div>';
-    expect(findPlayer(document)?.id).toBe('c');
+  it('falls back to the player container class when only it exists', () => {
+    document.body.innerHTML = '<div class="video-player__container"></div>';
+    expect(playerSelector(document)).toBe('.video-player__container');
   });
 
-  it('returns null when there is no player', () => {
-    expect(findPlayer(document)).toBeNull();
+  it('returns the default selector when there is no player', () => {
+    expect(playerSelector(document)).toBe('[data-a-target="video-player"]');
   });
 });

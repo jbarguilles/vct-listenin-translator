@@ -14,10 +14,7 @@ export function isTwitchUrl(url: string | undefined): boolean {
   }
 }
 
-export function findPlayer(doc: Document): HTMLElement | null {
-  for (const selector of PLAYER_SELECTORS) {
-    const el = doc.querySelector<HTMLElement>(selector);
-    if (el) return el;
-  }
-  return null;
+/** The first player selector that matches now, so the chip anchors to the most specific element. */
+export function playerSelector(doc: Document): string {
+  return PLAYER_SELECTORS.find((selector) => doc.querySelector(selector)) ?? PLAYER_SELECTORS[0]!;
 }
