@@ -8,18 +8,19 @@
   <body>
     <h1>Listen-in Translator</h1>
 
-    <section>
+    <form id="keys-form">
       <label>
         Gladia API key
-        <input id="gladia-key" type="password" autocomplete="off" spellcheck="false" />
+        <input id="gladia-key" type="password" autocomplete="new-password" spellcheck="false" />
       </label>
       <label>
         Anthropic API key
-        <input id="anthropic-key" type="password" autocomplete="off" spellcheck="false" />
+        <input id="anthropic-key" type="password" autocomplete="new-password" spellcheck="false" />
       </label>
-      <button id="save-keys" type="button">Save keys</button>
+      <button id="save-keys" type="submit">Save keys</button>
+      <p id="saved" class="note" role="status"></p>
       <p class="note">Keys stay in this browser and are sent only to Gladia and Anthropic.</p>
-    </section>
+    </form>
 
     <section>
       <button id="arm" type="button" disabled>Arm</button>
