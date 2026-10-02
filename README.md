@@ -8,7 +8,7 @@ Bring your own keys: [Gladia](https://www.gladia.io) for transcription and [Anth
 
 ## Development
 
-Requires Node 20+ and Chrome/Edge 116+.
+Requires Node 22.12+ and Chrome/Edge 116+.
 
     npm install
     npm run dev      # launches Chrome with the extension loaded

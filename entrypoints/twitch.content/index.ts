@@ -26,8 +26,32 @@ export default defineContentScript({
         return container;
       },
     });
-    // Twitch is a SPA: the player is replaced on navigation, so follow it.
-    ui.autoMount();
+    // Twitch is a SPA that can replace the player in place; WXT's autoMount only notices
+    // when no player exists, so re-parent the chip ourselves whenever its anchor changes.
+    const sync = () => {
+      const anchor = document.querySelector(playerSelector(document));
+      if (anchor && ui.shadowHost.parentElement !== anchor) {
+        ui.remove();
+        ui.mount();
+      } else if (!anchor && ui.mounted) {
+        ui.remove();
+      }
+    };
+    let scheduled = false;
+    const observer = new MutationObserver(() => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        sync();
+      });
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    ctx.onInvalidated(() => {
+      observer.disconnect();
+      ui.remove();
+    });
+    sync();
 
     const setArmed = (next: boolean) => {
       armed = next;
@@ -37,7 +61,7 @@ export default defineContentScript({
     // A push from the background is newer than our initial query; don't let a late reply overwrite it.
     let sawPush = false;
     browser.runtime.onMessage.addListener((msg: ContentMsg) => {
-      if (msg.type !== 'arming-changed') return;
+      if ((msg as ContentMsg | null)?.type !== 'arming-changed') return;
       sawPush = true;
       setArmed(msg.armed);
     });

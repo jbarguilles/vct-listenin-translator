@@ -56,6 +56,7 @@ export default defineBackground(() => {
   }
 
   browser.runtime.onMessage.addListener((raw, sender, sendResponse) => {
+    if (typeof raw !== 'object' || raw === null) return;
     const msg = raw as BackgroundMsg;
     switch (msg.type) {
       case 'arm':
