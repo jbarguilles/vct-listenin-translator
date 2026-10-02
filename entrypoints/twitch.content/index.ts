@@ -41,7 +41,7 @@ export default defineContentScript({
     const observer = new MutationObserver(() => {
       if (scheduled) return;
       scheduled = true;
-      requestAnimationFrame(() => {
+      ctx.requestAnimationFrame(() => {
         scheduled = false;
         sync();
       });
